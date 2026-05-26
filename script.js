@@ -29,10 +29,23 @@
 
 
     const REAL_IMAGE_ENDPOINTS = [
+        // Настоящие иконки из CS2: оружие, ножи, перчатки, наклейки, кейсы, капсулы, граффити, пины, музыка.
         'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/skins_not_grouped.json',
-        'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/skins_not_grouped.json'
+        'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/stickers.json',
+        'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/crates.json',
+        'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/music_kits.json',
+        'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/graffiti.json',
+        'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/collectibles.json',
+        'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/patches.json',
+        'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/skins_not_grouped.json',
+        'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/stickers.json',
+        'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/crates.json',
+        'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/music_kits.json',
+        'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/graffiti.json',
+        'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/collectibles.json',
+        'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/patches.json'
     ];
-    const REAL_IMAGE_CACHE_KEY = 'na_myase_real_skin_images_weapons_v4';
+    const REAL_IMAGE_CACHE_KEY = 'na_myase_real_skin_images_all_items_v7';
     const REAL_IMAGE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
     const realImages = new Map();
     let realImagesLoading = false;
@@ -75,7 +88,14 @@
         }
         if (typeof value !== 'object') return;
         const image = value.image || value.image_url || value.icon_url;
-        const names = [value.name, value.market_hash_name, value.item_name, value.weapon?.name && value.pattern?.name ? `${value.weapon.name} | ${value.pattern.name}` : ''];
+        const names = [
+            value.name,
+            value.market_hash_name,
+            value.item_name,
+            value.weapon?.name && value.pattern?.name ? `${value.weapon.name} | ${value.pattern.name}` : '',
+            value.weapon?.name && value.pattern?.name ? `${value.weapon.name} | ${value.pattern.name} (${value.wear?.name || value.exterior || ''})` : '',
+            value.type && value.name ? `${value.type} | ${value.name}` : ''
+        ];
         names.forEach(name => rememberRealImage(name, image));
         Object.values(value).forEach(child => {
             if (child && typeof child === 'object') walkImageApi(child);
@@ -301,7 +321,8 @@
             type: String(item.type || String(item.name || 'Skin').split('|')[0]).trim(),
             wear: item.wear || item.category || 'ITEM',
             rarity: item.rarity || 'consumer',
-            category: item.category || ''
+            category: item.category || '',
+            image: item.image || item.image_url || item.icon_url || ''
         })).filter(item => item.name && Number.isFinite(item.price) && isWeaponSkin(item));
 
         // На GitHub Pages показываем весь рынок: оружие, стикеры, кейсы, капсулы и музыку.
@@ -425,8 +446,12 @@
     }
 
     function renderThumb(skin) {
-        const realUrl = getRealImageUrl(skin) || localSkinSvgUrl(skin);
-        return `<div class="skin-real-wrap"><img class="skin-real-img" src="${esc(realUrl)}" alt="${esc(skin.name)}" loading="lazy" decoding="async" onerror="this.src='${esc(localSkinSvgUrl(skin))}'"><div class="skin-loading-img" style="display:none"></div></div>`;
+        const realUrl = getRealImageUrl(skin);
+        if (!realUrl) {
+            // Пока CDN-карта грузится, не показываем придуманные заглушки — только аккуратный loader.
+            return `<div class="skin-real-wrap skin-img-pending" title="${esc(skin.name)}"><div class="skin-cs2-loader">CS2</div></div>`;
+        }
+        return `<div class="skin-real-wrap"><img class="skin-real-img" src="${esc(realUrl)}" alt="${esc(skin.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.closest('.skin-real-wrap').classList.add('skin-img-error');this.remove();"><div class="skin-cs2-loader">CS2</div></div>`;
     }
 
     function rarityLabel(skin) {

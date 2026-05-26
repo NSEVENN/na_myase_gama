@@ -2185,3 +2185,30 @@ body.auth-locked #auth-overlay { display: flex !important; }
     .profile-skin-row { grid-template-columns: 26px 58px minmax(0, 1fr); }
     .profile-one-sell-btn { grid-column: 1 / -1; }
 }
+
+
+/* === REAL CS2 IMAGES: no fake generated placeholders === */
+.skin-real-wrap.skin-img-pending,
+.skin-real-wrap.skin-img-error {
+    background: radial-gradient(circle at 50% 50%, rgba(94,152,217,.16), rgba(6,10,18,.05) 68%) !important;
+}
+.skin-cs2-loader {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 64px !important;
+    height: 34px !important;
+    border: 1px solid rgba(94,152,217,.35) !important;
+    border-radius: 7px !important;
+    color: rgba(216,222,235,.42) !important;
+    font-weight: 900 !important;
+    font-size: 12px !important;
+    letter-spacing: 1px !important;
+    background: rgba(7,12,24,.55) !important;
+}
+.skin-real-wrap:not(.skin-img-pending):not(.skin-img-error) .skin-cs2-loader {
+    display: none !important;
+}
+.skin-real-img {
+    background: transparent !important;
+}
