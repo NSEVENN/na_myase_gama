@@ -29,6 +29,18 @@
 
 
     const REAL_IMAGE_ENDPOINTS = [
+        // Рабочий официальный URL из документации ByMykel. Эти endpoints должны быть первыми.
+        'https://bymykel.com/CSGO-API/api/en/skins_not_grouped.json',
+        'https://bymykel.com/CSGO-API/api/en/stickers.json',
+        'https://bymykel.com/CSGO-API/api/en/sticker_slabs.json',
+        'https://bymykel.com/CSGO-API/api/en/crates.json',
+        'https://bymykel.com/CSGO-API/api/en/music_kits.json',
+        'https://bymykel.com/CSGO-API/api/en/graffiti.json',
+        'https://bymykel.com/CSGO-API/api/en/collectibles.json',
+        'https://bymykel.com/CSGO-API/api/en/patches.json',
+        'https://bymykel.com/CSGO-API/api/en/keychains.json',
+        'https://bymykel.com/CSGO-API/api/en/agents.json',
+
         // Настоящие иконки из CS2. Главный источник — GitHub Pages ByMykel CSGO-API.
         // raw/jsDelivr оставлены как запасные зеркала, если одно из CDN не открылось.
         'https://bymykel.github.io/CSGO-API/api/en/skins_not_grouped.json',
@@ -64,7 +76,7 @@
         'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/keychains.json',
         'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/agents.json'
     ];
-    const REAL_IMAGE_CACHE_KEY = 'na_myase_real_skin_images_all_items_v8';
+    const REAL_IMAGE_CACHE_KEY = 'na_myase_real_skin_images_all_items_v13';
     const REAL_IMAGE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
     const realImages = new Map();
     let realImagesLoading = false;
@@ -171,11 +183,8 @@
     }
 
 
-    function steamMarketNameForImage(skin) {
-        let name = String(skin?.market_hash_name || skin?.name || '').trim();
-        if (!name) return '';
-        // Убираем описательные приписки, которых нет в Steam Market name.
-        name = name
+    function stripDecorationsForMarket(name) {
+        return String(name || '')
             .replace(/\s*\+\s*\d+x.*$/i, '')
             .replace(/\s*#\d+.*?(?=\s*\(|$)/i, '')
             .replace(/\s+Blue Gem(?=\s*\(|$)/i, '')
@@ -187,20 +196,52 @@
             .replace(/\s+Factory New(?=\s*\(|$)/i, '')
             .replace(/\s+/g, ' ')
             .trim();
+    }
 
-        // Для скинов оружия/ножей внешний вид обязателен, если он есть в объекте, но потерялся в названии.
+    function withWearIfNeeded(name, skin) {
         const wearMap = { FN: 'Factory New', MW: 'Minimal Wear', FT: 'Field-Tested', WW: 'Well-Worn', BS: 'Battle-Scarred' };
         const wear = wearMap[String(skin?.wear || '').toUpperCase()] || '';
         if (wear && /\|/.test(name) && !/\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)$/i.test(name)) {
-            name += ` (${wear})`;
+            return `${name} (${wear})`;
         }
         return name;
     }
 
-    function steamApisImageUrl(skin) {
-        const name = steamMarketNameForImage(skin);
+    function steamMarketNameForImage(skin) {
+        let name = String(skin?.market_hash_name || skin?.name || '').trim();
+        if (!name) return '';
+        name = stripDecorationsForMarket(name);
+        name = withWearIfNeeded(name, skin);
+        return name;
+    }
+
+    function steamApisImageUrlForName(name) {
         if (!name) return '';
         return `https://api.steamapis.com/image/item/730/${encodeURIComponent(name)}`;
+    }
+
+    function steamApisImageUrl(skin) {
+        return steamApisImageUrlForName(steamMarketNameForImage(skin));
+    }
+
+    function imageFallbackNames(skin) {
+        const original = String(skin?.market_hash_name || skin?.name || '').trim();
+        const market = steamMarketNameForImage(skin);
+        const names = new Set([market, original]);
+        const noSouvenir = market.replace(/^Souvenir\s+/i, '').trim();
+        if (noSouvenir) names.add(noSouvenir);
+        const noStat = market.replace(/^StatTrak™\s+/i, '').trim();
+        if (noStat) names.add(noStat);
+        const noStar = market.replace(/^★\s*/i, '').trim();
+        if (noStar) names.add(noStar);
+        const baseNoWear = market.replace(/\s*\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)\s*$/i, '').trim();
+        if (baseNoWear) names.add(baseNoWear);
+        const noSouvenirNoWear = noSouvenir.replace(/\s*\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)\s*$/i, '').trim();
+        if (noSouvenirNoWear) names.add(noSouvenirNoWear);
+        // Для кастомных сверхдорогих предметов со стикерами лучше показать чистый скин оружия, чем пустую заглушку.
+        const cleanOriginal = withWearIfNeeded(stripDecorationsForMarket(original), skin);
+        if (cleanOriginal) names.add(cleanOriginal);
+        return Array.from(names).filter(Boolean);
     }
 
     function getRealImageUrl(skin) {
@@ -521,14 +562,18 @@
     }
 
     function renderThumb(skin) {
-        const realUrl = getRealImageUrl(skin);
-        const backupUrl = steamApisImageUrl(skin);
-        if (!realUrl && !backupUrl) {
+        const urls = [];
+        const addUrl = (url) => { if (url && !urls.includes(url)) urls.push(url); };
+        addUrl(getRealImageUrl(skin));
+        imageFallbackNames(skin).forEach(name => addUrl(steamApisImageUrlForName(name)));
+
+        if (!urls.length) {
             return `<div class="skin-real-wrap skin-img-pending" title="${esc(skin.name)}"><div class="skin-cs2-loader">IMG</div></div>`;
         }
-        const src = realUrl || backupUrl;
-        const backupAttr = backupUrl && backupUrl !== src ? ` data-backup-src="${esc(backupUrl)}"` : '';
-        return `<div class="skin-real-wrap"><img class="skin-real-img" src="${esc(src)}"${backupAttr} alt="${esc(skin.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="if(this.dataset.backupSrc && this.src!==this.dataset.backupSrc){this.src=this.dataset.backupSrc;this.removeAttribute('data-backup-src');}else{this.closest('.skin-real-wrap').classList.add('skin-img-error');this.remove();}"><div class="skin-cs2-loader">IMG</div></div>`;
+        const src = urls.shift();
+        const backups = urls.join('|||');
+        const backupAttr = backups ? ` data-backups="${esc(backups)}"` : '';
+        return `<div class="skin-real-wrap"><img class="skin-real-img" src="${esc(src)}"${backupAttr} alt="${esc(skin.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="const list=(this.dataset.backups||'').split('|||').filter(Boolean); if(list.length){this.src=list.shift(); this.dataset.backups=list.join('|||');}else{this.closest('.skin-real-wrap').classList.add('skin-img-error');this.remove();}"><div class="skin-cs2-loader">IMG</div></div>`;
     }
 
     function rarityLabel(skin) {
