@@ -565,6 +565,35 @@
         });
     }
 
+
+
+    function ensureWheelResultLabel() {
+        const wheel = $('wheel-container');
+        if (!wheel) return null;
+        let label = $('wheel-result-label');
+        if (!label) {
+            label = document.createElement('div');
+            label.id = 'wheel-result-label';
+            label.className = 'wheel-result-label';
+            wheel.appendChild(label);
+        }
+        return label;
+    }
+
+    function clearWheelResultLabel() {
+        const label = ensureWheelResultLabel();
+        if (!label) return;
+        label.className = 'wheel-result-label';
+        label.textContent = '';
+    }
+
+    function showWheelResultLabel(win) {
+        const label = ensureWheelResultLabel();
+        if (!label) return;
+        label.textContent = win ? 'ВЫИГРЫШ' : 'ПОРАЖЕНИЕ';
+        label.className = `wheel-result-label ${win ? 'win' : 'lose'} show`;
+    }
+
     async function upgrade() {
         if (isUpgrading) return;
         if (!selectedSource || !selectedTarget) {
@@ -574,6 +603,7 @@
         }
 
         isUpgrading = true;
+        clearWheelResultLabel();
         const btn = $('upgrade-btn');
         const status = $('status-text');
         const chance = calcChance();
@@ -583,6 +613,7 @@
         if (status) status.textContent = 'Апгрейд запущен... стрелка крутится';
 
         await animatePointerSpin(win, 6000);
+        showWheelResultLabel(win);
 
         const removeIndex = selectedSource.invIndex;
         const sourceName = selectedSource.name;
