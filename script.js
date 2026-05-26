@@ -527,41 +527,38 @@
     }
 
     function setWheelResult(text, type) {
-        const container = $('wheel-container');
-        if (!container) return;
-        let el = $('wheel-result-overlay');
-        if (!el) {
-            el = document.createElement('div');
-            el.id = 'wheel-result-overlay';
-            el.className = 'wheel-result-overlay';
-            container.appendChild(el);
+        const wheel = $('wheel-container');
+        if (!wheel) return;
+        let badge = $('wheel-result-message');
+        if (!badge) {
+            badge = document.createElement('div');
+            badge.id = 'wheel-result-message';
+            badge.className = 'wheel-result-message';
+            wheel.appendChild(badge);
         }
-        el.textContent = text || '';
-        el.className = `wheel-result-overlay ${type || ''}`.trim();
-        el.classList.toggle('show', Boolean(text));
+        badge.textContent = text || '';
+        badge.className = `wheel-result-message ${type || ''}`.trim();
+        badge.classList.toggle('active', Boolean(text));
     }
 
-    function animatePointerSpin(finalWin, chance, duration = 6000) {
+    function animatePointerSpin(finalWin, duration = 6000, chanceValue = calcChance()) {
         const pointer = $('wheel-pointer');
         const track = $('wheel-track');
         if (!pointer) return Promise.resolve();
 
-        // Важно: итоговый угол теперь считается из той же шкалы, что и визуальный сектор.
-        // Поэтому если стрелка остановилась на цветной части — это всегда победа.
-        const chanceAngle = Math.min(342, Math.max(0.36, Number(chance || 0) * 3.6));
-        const margin = 8;
-        let targetAngle;
-        if (finalWin) {
-            const safeEnd = Math.max(margin + 1, chanceAngle - margin);
-            targetAngle = chanceAngle <= margin * 2 ? chanceAngle / 2 : margin + Math.random() * (safeEnd - margin);
-        } else {
-            const loseStart = Math.min(358, chanceAngle + margin);
-            targetAngle = loseStart + Math.random() * Math.max(1, 358 - loseStart);
-        }
-        const finalAngle = 2160 + targetAngle;
+        setWheelResult('', '');
+
+        const chanceDeg = Math.min(342, Math.max(2, Number(chanceValue || 0) * 3.6));
+        const winMin = 8;
+        const winMax = Math.max(winMin + 1, chanceDeg - 8);
+        const loseMin = Math.min(352, chanceDeg + 10);
+        const loseMax = 354;
+        const stopAngle = finalWin
+            ? winMin + Math.random() * (winMax - winMin)
+            : loseMin + Math.random() * Math.max(1, loseMax - loseMin);
+        const finalAngle = 2160 + stopAngle;
         const start = performance.now();
 
-        setWheelResult('', '');
         pointer.classList.add('spin-now');
         if (track) track.classList.add('spin-now');
         pointer.style.setProperty('transition', 'none', 'important');
@@ -608,7 +605,8 @@
         if (btn) btn.disabled = true;
         if (status) status.textContent = 'Апгрейд запущен... стрелка крутится';
 
-        await animatePointerSpin(win, chance, 6000);
+        await animatePointerSpin(win, 6000, chance);
+        setWheelResult(win ? 'ВЫИГРЫШ' : 'ПОРАЖЕНИЕ', win ? 'win' : 'lose');
 
         const removeIndex = selectedSource.invIndex;
         const sourceName = selectedSource.name;
@@ -630,7 +628,6 @@
         saveAccount();
         renderAll();
 
-        setWheelResult(win ? 'ВЫИГРЫШ' : 'ПОРАЖЕНИЕ', win ? 'win' : 'lose');
         if (status) status.textContent = win ? `Успех! Получен ${targetName}` : `Неудача. ${sourceName} сгорел.`;
         isUpgrading = false;
         calcChance();
