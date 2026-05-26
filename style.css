@@ -2008,3 +2008,51 @@ body.auth-locked #auth-overlay { display: flex !important; }
 .wheel-result-message.active { display: block !important; }
 .wheel-result-message.win { color: #00ff88 !important; text-shadow: 0 0 14px rgba(0,255,136,.75) !important; }
 .wheel-result-message.lose { color: #ff3366 !important; text-shadow: 0 0 14px rgba(255,51,102,.75) !important; }
+
+/* === CENTERED WHEEL POINTER FIX ===
+   The wheel is 280px, so its center is 140px from the top/left.
+   Pointer is 38px wide and top is -20px; origin must be x=19, y=160
+   so CSS/JS rotate() spins exactly around the wheel center, not shifted. */
+.radial-wheel-container {
+    position: relative !important;
+    width: 280px !important;
+    height: 280px !important;
+    flex-basis: 280px !important;
+    overflow: visible !important;
+}
+#wheel-pointer,
+.wheel-pointer {
+    position: absolute !important;
+    top: -20px !important;
+    left: calc(50% - 19px) !important;
+    width: 38px !important;
+    height: 48px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    transform: rotate(0deg) !important;
+    transform-origin: 19px 160px !important;
+    z-index: 50 !important;
+    pointer-events: none !important;
+    will-change: transform !important;
+}
+#wheel-pointer::before,
+.wheel-pointer::before {
+    content: '' !important;
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    border-left: 19px solid transparent !important;
+    border-right: 19px solid transparent !important;
+    border-top: 48px solid #ffd21f !important;
+    border-bottom: 0 !important;
+}
+#wheel-pointer::after,
+.wheel-pointer::after {
+    content: none !important;
+    display: none !important;
+}
