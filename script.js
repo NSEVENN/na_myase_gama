@@ -29,23 +29,42 @@
 
 
     const REAL_IMAGE_ENDPOINTS = [
-        // Настоящие иконки из CS2: оружие, ножи, перчатки, наклейки, кейсы, капсулы, граффити, пины, музыка.
+        // Настоящие иконки из CS2. Главный источник — GitHub Pages ByMykel CSGO-API.
+        // raw/jsDelivr оставлены как запасные зеркала, если одно из CDN не открылось.
+        'https://bymykel.github.io/CSGO-API/api/en/skins_not_grouped.json',
+        'https://bymykel.github.io/CSGO-API/api/en/stickers.json',
+        'https://bymykel.github.io/CSGO-API/api/en/sticker_slabs.json',
+        'https://bymykel.github.io/CSGO-API/api/en/crates.json',
+        'https://bymykel.github.io/CSGO-API/api/en/music_kits.json',
+        'https://bymykel.github.io/CSGO-API/api/en/graffiti.json',
+        'https://bymykel.github.io/CSGO-API/api/en/collectibles.json',
+        'https://bymykel.github.io/CSGO-API/api/en/patches.json',
+        'https://bymykel.github.io/CSGO-API/api/en/keychains.json',
+        'https://bymykel.github.io/CSGO-API/api/en/agents.json',
+
         'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/skins_not_grouped.json',
         'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/stickers.json',
+        'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/sticker_slabs.json',
         'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/crates.json',
         'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/music_kits.json',
         'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/graffiti.json',
         'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/collectibles.json',
         'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/patches.json',
+        'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/keychains.json',
+        'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/agents.json',
+
         'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/skins_not_grouped.json',
         'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/stickers.json',
+        'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/sticker_slabs.json',
         'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/crates.json',
         'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/music_kits.json',
         'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/graffiti.json',
         'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/collectibles.json',
-        'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/patches.json'
+        'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/patches.json',
+        'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/keychains.json',
+        'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/agents.json'
     ];
-    const REAL_IMAGE_CACHE_KEY = 'na_myase_real_skin_images_all_items_v7';
+    const REAL_IMAGE_CACHE_KEY = 'na_myase_real_skin_images_all_items_v8';
     const REAL_IMAGE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
     const realImages = new Map();
     let realImagesLoading = false;
@@ -65,11 +84,19 @@
 
     function imageKeys(name) {
         const raw = String(name || '').trim();
-        const keys = new Set([normalizeImageName(raw)]);
+        const base = normalizeImageName(raw);
+        const withoutWear = base.replace(/\s*\((factory new|minimal wear|field-tested|well-worn|battle-scarred)\)\s*$/i, '');
+        const keys = new Set([base, withoutWear]);
+
+        // В API некоторые специальные Doppler/Gamma Doppler варианты идут без Ruby/Sapphire/Emerald/Phase в названии.
+        keys.add(withoutWear.replace(/\s+(sapphire|ruby|black pearl|emerald|phase 1|phase 2|phase 3|phase 4)$/i, ''));
+        // Для наклеек/граффити/пинов/капсул часто отличается префикс.
         keys.add(normalizeImageName(raw.replace(/^Sticker\s*\|\s*/i, '')));
         keys.add(normalizeImageName(raw.replace(/^Sealed Graffiti\s*\|\s*/i, 'Graffiti | ')));
         keys.add(normalizeImageName(raw.replace(/^Collectible Pin\s*\|\s*/i, 'Pin | ')));
         keys.add(normalizeImageName(raw.replace(/^Souvenir Package\s*\|\s*/i, '')));
+        keys.add(normalizeImageName(raw.replace(/^Music Kit\s*\|\s*/i, '')));
+
         return Array.from(keys).filter(Boolean);
     }
 
@@ -97,6 +124,9 @@
             value.type && value.name ? `${value.type} | ${value.name}` : ''
         ];
         names.forEach(name => rememberRealImage(name, image));
+        // Дополнительные ключи для ножей Doppler/Gamma Doppler и market_hash_name — чтобы картинки не висели на CS2-loader.
+        if (value.market_hash_name) rememberRealImage(value.market_hash_name, image);
+        if (value.name && value.paint_index && value.name.toLowerCase().includes('doppler')) rememberRealImage(value.name.replace(/\s*\((.*?)\)\s*$/, ''), image);
         Object.values(value).forEach(child => {
             if (child && typeof child === 'object') walkImageApi(child);
         });
@@ -142,12 +172,22 @@
 
     function getRealImageUrl(skin) {
         if (!skin) return '';
-        // 1) локальный ассет из skins.js — главный источник
         if (skin.image) return String(skin.image);
-        // 2) fallback: настоящая Steam/CS2 картинка из ByMykel CSGO-API, если локальный ассет еще не скачан
-        for (const key of imageKeys(skin.name)) {
+        const keys = imageKeys(skin.name);
+        for (const key of keys) {
             const url = realImages.get(key);
             if (url) return url;
+        }
+        // Мягкий fuzzy-поиск: помогает для вариантов типа Doppler Sapphire/Ruby/Emerald,
+        // где в API название картинки может быть короче, чем название предмета в нашем списке.
+        const main = keys[0] || '';
+        if (main && realImages.size) {
+            const compact = main.replace(/\b(sapphire|ruby|black pearl|emerald|phase 1|phase 2|phase 3|phase 4)\b/g, '').replace(/\s+/g, ' ').trim();
+            let best = '';
+            for (const [key, url] of realImages.entries()) {
+                if (compact && (compact.includes(key) || key.includes(compact))) { best = url; break; }
+            }
+            if (best) return best;
         }
         return '';
     }
