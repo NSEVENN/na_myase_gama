@@ -258,11 +258,12 @@
 
 
     function isWeaponSkin(item) {
+        // Название функции оставлено для совместимости, но теперь магазин показывает не только оружие:
+        // скины, ножи, перчатки, наклейки, капсулы, кейсы, наборы музыки, граффити, нашивки и пины.
         const text = norm(`${item?.type || ''} ${item?.name || ''} ${item?.category || ''} ${item?.rarity || ''}`);
-        const blocked = ['sticker', 'graffiti', 'case', 'capsule', 'music', 'agent', 'patch', 'pin', 'souvenir package', 'key', 'collectible'];
-        if (blocked.some(x => text.includes(x))) return false;
-        const weaponWords = ['ak-47','m4a4','m4a1-s','awp','usp-s','glock','desert eagle','deagle','p250','p90','mp9','mac-10','famas','galil','ssg 08','aug','sg 553','tec-9','five-seven','cz75','dual berettas','mp7','mp5','ump-45','pp-bizon','nova','xm1014','mag-7','sawed-off','negev','m249','scar-20','g3sg1','knife','bayonet','karambit','butterfly','gloves'];
-        return weaponWords.some(w => text.includes(w));
+        if (!String(item?.name || '').trim()) return false;
+        const blocked = ['key'];
+        return !blocked.some(x => text.includes(x));
     }
 
     function prepareSkins() {
@@ -303,7 +304,7 @@
             category: item.category || ''
         })).filter(item => item.name && Number.isFinite(item.price) && isWeaponSkin(item));
 
-        // Чтобы на GitHub Pages всегда были именно оружейные CS2-скины, а не стикеры/кейсы.
+        // На GitHub Pages показываем весь рынок: оружие, стикеры, кейсы, капсулы и музыку.
         if (!skins.length) {
             skins = [
                 { id: 'fallback_ak_47_redline_ft', name: 'AK-47 | Redline (Field-Tested)', price: 18.50, type: 'AK-47', wear: 'FT', rarity: 'classified' },
@@ -416,7 +417,7 @@
     }
 
     function rarityLabel(skin) {
-        const map = { consumer:'Consumer', industrial:'Industrial', milspec:'Mil-Spec', restricted:'Restricted', classified:'Classified', covert:'Covert', contraband:'Contraband', knife:'Knife', gloves:'Gloves' };
+        const map = { consumer:'Consumer', industrial:'Industrial', milspec:'Mil-Spec', restricted:'Restricted', classified:'Classified', covert:'Covert', contraband:'Contraband', knife:'Knife', gloves:'Gloves', case:'Case', sticker:'Sticker', music:'Music', patch:'Patch', pin:'Pin', graffiti:'Graffiti', souvenir:'Souvenir', capsule:'Capsule' };
         return map[skin.rarity] || 'Skin';
     }
 
