@@ -835,8 +835,6 @@ const LARGE_SKINS_DATABASE = [
     {"id": "package_anubis", "name": "Souvenir Package | Anubis", "price": 1.2, "type": "Souvenir", "wear": "SOUVENIR", "rarity": "souvenir", "category": "Souvenir"},
     {"id": "package_vertigo", "name": "Souvenir Package | Vertigo", "price": 1.5, "type": "Souvenir", "wear": "SOUVENIR", "rarity": "souvenir", "category": "Souvenir"}
 ,
-    // Дополнительные предметы и цены, обновлено вручную по CS2 market агрегаторам (май 2026).
-    // Цены примерные, в долларах: рынок CS2 постоянно меняется.
     { id: 'awp_dragon_lore_fn_2026', name: 'AWP | Dragon Lore (Factory New)', price: 15000.00, type: 'AWP', wear: 'FN', rarity: 'covert', category: 'Skin' },
     { id: 'awp_dragon_lore_souvenir_fn_2026', name: 'Souvenir AWP | Dragon Lore (Factory New)', price: 515101.00, type: 'AWP', wear: 'FN', rarity: 'contraband', category: 'Skin' },
     { id: 'ak47_case_hardened_661_fn_2026', name: 'AK-47 | Case Hardened #661 (Factory New)', price: 150000.00, type: 'AK-47', wear: 'FN', rarity: 'contraband', category: 'Skin' },
@@ -908,7 +906,6 @@ const LARGE_SKINS_DATABASE = [
     { id: 'capsule_stockholm_2021_contenders_2026', name: 'Stockholm 2021 Contenders Sticker Capsule', price: 4.60, type: 'Capsule', wear: 'CAPSULE', rarity: 'case', category: 'Capsule' },
     { id: 'capsule_paris_2023_legends_2026', name: 'Paris 2023 Legends Sticker Capsule', price: 0.75, type: 'Capsule', wear: 'CAPSULE', rarity: 'case', category: 'Capsule' },
 
-    // === MORE ITEMS WITH UPDATED REALISTIC USD PRICES + LOCAL GENERATED PICTURES ===
     { id: 'bluegem_karambit_387', name: '★ Karambit | Case Hardened Blue Gem #387 (Factory New)', price: 2500000.00, type: 'Karambit', wear: 'FN', rarity: 'contraband', category: 'Skin' },
     { id: 'bluegem_ak47_661_stattrak', name: 'StatTrak™ AK-47 | Case Hardened Blue Gem #661 (Factory New)', price: 1500000.00, type: 'AK-47', wear: 'FN', rarity: 'contraband', category: 'Skin' },
     { id: 'souvenir_awp_dragon_lore_fn', name: 'Souvenir AWP | Dragon Lore (Factory New)', price: 500000.00, type: 'AWP', wear: 'FN', rarity: 'contraband', category: 'Skin' },
@@ -976,5 +973,4 @@ const LARGE_SKINS_DATABASE = [
 ];
 
 
-// Экспорт для script.js. В браузере `const` не попадает в window автоматически.
 if (typeof window !== 'undefined') window.LARGE_SKINS_DATABASE = LARGE_SKINS_DATABASE;
