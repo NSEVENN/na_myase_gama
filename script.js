@@ -19,6 +19,7 @@
     let selectedTarget = null;
     let started = false;
     let isUpgrading = false;
+    let profileSellSelection = new Set();
 
     const $ = (id) => document.getElementById(id);
     const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -251,6 +252,7 @@
         inventory = [];
         selectedSource = null;
         selectedTarget = null;
+        profileSellSelection.clear();
         showAuth('login');
     }
 
@@ -470,6 +472,99 @@
     function updateBalance() {
         const el = $('balance');
         if (el) el.textContent = money(balance);
+    }
+
+
+
+    function openProfile() {
+        const modal = $('profile-modal');
+        profileSellSelection.clear();
+        renderProfile();
+        if (modal) modal.classList.add('active');
+    }
+
+    function closeProfile() {
+        const modal = $('profile-modal');
+        if (modal) modal.classList.remove('active');
+    }
+
+    function renderProfile() {
+        const loginEl = $('profile-login');
+        const balanceEl = $('profile-balance');
+        const list = $('profile-inventory-list');
+        const summary = $('profile-sell-summary');
+        if (loginEl) loginEl.textContent = currentLogin || '-';
+        if (balanceEl) balanceEl.textContent = money(balance);
+        if (!list) return;
+
+        const validSelection = new Set();
+        profileSellSelection.forEach(i => {
+            if (Number.isInteger(i) && inventory[i]) validSelection.add(i);
+        });
+        profileSellSelection = validSelection;
+
+        const selectedItems = Array.from(profileSellSelection).map(i => inventory[i]).filter(Boolean);
+        const total = selectedItems.reduce((sum, skin) => sum + Number(skin.price || 0), 0);
+        if (summary) summary.textContent = `Выбрано: ${selectedItems.length} на ${money(total)}$`;
+
+        if (!inventory.length) {
+            list.innerHTML = '<p class="empty-notice profile-empty">Инвентарь пуст. Купите или выиграйте скин, чтобы продать его.</p>';
+            return;
+        }
+
+        list.innerHTML = inventory.map((skin, index) => `
+            <div class="profile-skin-row ${profileSellSelection.has(index) ? 'selected' : ''}" data-profile-index="${index}">
+                <label class="profile-check-wrap">
+                    <input type="checkbox" class="profile-sell-check" data-profile-index="${index}" ${profileSellSelection.has(index) ? 'checked' : ''}>
+                </label>
+                <div class="profile-skin-thumb">${renderThumb(skin)}</div>
+                <div class="profile-skin-info">
+                    <div class="profile-skin-name" title="${esc(skin.name)}">${esc(skin.name)}</div>
+                    <div class="profile-skin-price">${money(skin.price)}$</div>
+                </div>
+                <button type="button" class="profile-one-sell-btn" data-profile-index="${index}">Продать</button>
+            </div>
+        `).join('');
+    }
+
+    function toggleProfileSkin(index, checked) {
+        if (!inventory[index]) return;
+        if (checked) profileSellSelection.add(index);
+        else profileSellSelection.delete(index);
+        renderProfile();
+    }
+
+    function selectAllProfileSkins() {
+        if (profileSellSelection.size === inventory.length) {
+            profileSellSelection.clear();
+        } else {
+            profileSellSelection = new Set(inventory.map((_, i) => i));
+        }
+        renderProfile();
+    }
+
+    function sellInventoryIndexes(indexes) {
+        const unique = Array.from(new Set(indexes))
+            .filter(i => Number.isInteger(i) && inventory[i])
+            .sort((a, b) => b - a);
+        if (!unique.length) return;
+
+        const total = unique.reduce((sum, i) => sum + Number(inventory[i]?.price || 0), 0);
+        unique.forEach(i => inventory.splice(i, 1));
+        balance += total;
+
+        selectedSource = null;
+        profileSellSelection.clear();
+        preview('source-preview', null, 'Выберите скины для использования');
+        saveAccount();
+        renderAll();
+        renderProfile();
+        const status = $('status-text');
+        if (status) status.textContent = `Продано скинов: ${unique.length}. Баланс +${money(total)}$`;
+    }
+
+    function sellSelectedProfileSkins() {
+        sellInventoryIndexes(Array.from(profileSellSelection));
     }
 
     function preview(elId, skin, title) {
@@ -703,6 +798,11 @@
         $('auth-login-btn')?.addEventListener('click', login);
         $('auth-register-btn')?.addEventListener('click', register);
         $('logout-btn')?.addEventListener('click', logout);
+        $('user-chip')?.addEventListener('click', openProfile);
+        $('close-profile-btn')?.addEventListener('click', closeProfile);
+        $('profile-modal')?.addEventListener('click', e => { if (e.target === $('profile-modal')) closeProfile(); });
+        $('profile-select-all')?.addEventListener('click', selectAllProfileSkins);
+        $('profile-sell-selected')?.addEventListener('click', sellSelectedProfileSkins);
 
         $('open-deposit-btn')?.addEventListener('click', openDeposit);
         $('close-deposit-btn')?.addEventListener('click', closeDeposit);
@@ -725,6 +825,18 @@
             if (action === 'target') selectTarget(id);
             if (action === 'source') selectSource(Number($$('.skin-item-card[data-action="source"]').indexOf(cardEl)));
         });
+
+        document.addEventListener('change', e => {
+            const check = e.target.closest('.profile-sell-check');
+            if (!check) return;
+            toggleProfileSkin(Number(check.dataset.profileIndex), check.checked);
+        });
+
+        document.addEventListener('click', e => {
+            const sellBtn = e.target.closest('.profile-one-sell-btn');
+            if (!sellBtn) return;
+            sellInventoryIndexes([Number(sellBtn.dataset.profileIndex)]);
+        });
     }
 
     function renderAll() {
@@ -733,6 +845,7 @@
         renderShop();
         renderTargets();
         calcChance();
+        if ($('profile-modal')?.classList.contains('active')) renderProfile();
     }
 
     function startApp() {

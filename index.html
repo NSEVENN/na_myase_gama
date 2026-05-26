@@ -158,6 +158,30 @@
             </div>
         </div>
     </div>
+
+    <div class="modal-overlay" id="profile-modal">
+        <div class="modal-window profile-window">
+            <div class="modal-header">
+                <h3>Профиль</h3>
+                <button class="modal-close-btn" id="close-profile-btn">&times;</button>
+            </div>
+            <div class="profile-user-line">
+                <span>Ник:</span>
+                <strong id="profile-login">-</strong>
+            </div>
+            <div class="profile-user-line">
+                <span>Баланс:</span>
+                <strong><span id="profile-balance">0.00</span>$</strong>
+            </div>
+            <div class="profile-actions-row">
+                <button type="button" id="profile-select-all" class="profile-secondary-btn">Выбрать все</button>
+                <button type="button" id="profile-sell-selected" class="profile-sell-btn">Продать выбранные</button>
+            </div>
+            <div id="profile-sell-summary" class="profile-sell-summary">Выбрано: 0 на 0.00$</div>
+            <div id="profile-inventory-list" class="profile-inventory-list"></div>
+        </div>
+    </div>
+
     <script src="skins.js?v=final-ui-fix-2026-05-25"></script>
     <script src="script.js?v=final-ui-fix-2026-05-25"></script>
 </body>

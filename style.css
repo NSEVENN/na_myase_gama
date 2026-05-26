@@ -2056,3 +2056,132 @@ body.auth-locked #auth-overlay { display: flex !important; }
     content: none !important;
     display: none !important;
 }
+
+/* Profile / selling skins */
+.user-chip {
+    cursor: pointer;
+    transition: border-color .15s, color .15s, box-shadow .15s;
+}
+.user-chip:hover {
+    color: var(--color-gold);
+    border-color: rgba(222, 193, 41, .55);
+    box-shadow: 0 0 12px rgba(222, 193, 41, .16);
+}
+.profile-window {
+    width: min(640px, calc(100vw - 24px));
+    max-height: calc(100vh - 50px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.profile-user-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid #202637;
+    border-radius: 6px;
+    padding: 9px 11px;
+    color: var(--text-light-gray);
+    font-size: 13px;
+}
+.profile-user-line strong { color: var(--color-gold); }
+.profile-actions-row {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 8px;
+}
+.profile-secondary-btn,
+.profile-sell-btn,
+.profile-one-sell-btn {
+    border: none;
+    border-radius: 5px;
+    padding: 9px 10px;
+    font-weight: 800;
+    cursor: pointer;
+}
+.profile-secondary-btn {
+    background: #171b26;
+    color: var(--text-light-gray);
+    border: 1px solid #252c3d;
+}
+.profile-sell-btn,
+.profile-one-sell-btn {
+    background: var(--color-gold);
+    color: #05060a;
+}
+.profile-one-sell-btn {
+    padding: 7px 10px;
+    font-size: 11px;
+    white-space: nowrap;
+}
+.profile-sell-summary {
+    color: var(--text-gray);
+    font-size: 12px;
+    text-align: center;
+}
+.profile-inventory-list {
+    overflow-y: auto;
+    padding-right: 3px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+.profile-skin-row {
+    display: grid;
+    grid-template-columns: 30px 72px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 9px;
+    background: var(--bg-card);
+    border: 1px solid #202637;
+    border-radius: 7px;
+    padding: 8px;
+}
+.profile-skin-row.selected {
+    border-color: var(--color-gold);
+    background: #171c28;
+}
+.profile-check-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.profile-sell-check {
+    width: 17px;
+    height: 17px;
+    accent-color: #dec129;
+    cursor: pointer;
+}
+.profile-skin-thumb {
+    height: 48px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.profile-skin-thumb img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+.profile-skin-info { min-width: 0; }
+.profile-skin-name {
+    color: var(--text-white);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.profile-skin-price {
+    color: var(--color-gold);
+    font-size: 12px;
+    font-weight: 800;
+    margin-top: 3px;
+}
+.profile-empty { margin: 24px 0; }
+@media (max-width: 520px) {
+    .profile-actions-row { grid-template-columns: 1fr; }
+    .profile-skin-row { grid-template-columns: 26px 58px minmax(0, 1fr); }
+    .profile-one-sell-btn { grid-column: 1 / -1; }
+}
