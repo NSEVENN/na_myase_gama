@@ -29,7 +29,6 @@
 
 
     const REAL_IMAGE_ENDPOINTS = [
-        // Рабочий официальный URL из документации ByMykel. Эти endpoints должны быть первыми.
         'https://bymykel.com/CSGO-API/api/en/skins_not_grouped.json',
         'https://bymykel.com/CSGO-API/api/en/stickers.json',
         'https://bymykel.com/CSGO-API/api/en/sticker_slabs.json',
@@ -41,8 +40,6 @@
         'https://bymykel.com/CSGO-API/api/en/keychains.json',
         'https://bymykel.com/CSGO-API/api/en/agents.json',
 
-        // Настоящие иконки из CS2. Главный источник — GitHub Pages ByMykel CSGO-API.
-        // raw/jsDelivr оставлены как запасные зеркала, если одно из CDN не открылось.
         'https://bymykel.github.io/CSGO-API/api/en/skins_not_grouped.json',
         'https://bymykel.github.io/CSGO-API/api/en/stickers.json',
         'https://bymykel.github.io/CSGO-API/api/en/sticker_slabs.json',
@@ -100,9 +97,9 @@
         const withoutWear = base.replace(/\s*\((factory new|minimal wear|field-tested|well-worn|battle-scarred)\)\s*$/i, '');
         const keys = new Set([base, withoutWear]);
 
-        // В API некоторые специальные Doppler/Gamma Doppler варианты идут без Ruby/Sapphire/Emerald/Phase в названии.
+        
         keys.add(withoutWear.replace(/\s+(sapphire|ruby|black pearl|emerald|phase 1|phase 2|phase 3|phase 4)$/i, ''));
-        // Для наклеек/граффити/пинов/капсул часто отличается префикс.
+        
         keys.add(normalizeImageName(raw.replace(/^Sticker\s*\|\s*/i, '')));
         keys.add(normalizeImageName(raw.replace(/^Sealed Graffiti\s*\|\s*/i, 'Graffiti | ')));
         keys.add(normalizeImageName(raw.replace(/^Collectible Pin\s*\|\s*/i, 'Pin | ')));
@@ -136,7 +133,7 @@
             value.type && value.name ? `${value.type} | ${value.name}` : ''
         ];
         names.forEach(name => rememberRealImage(name, image));
-        // Дополнительные ключи для ножей Doppler/Gamma Doppler и market_hash_name — чтобы картинки не висели на CS2-loader.
+        
         if (value.market_hash_name) rememberRealImage(value.market_hash_name, image);
         if (value.name && value.paint_index && value.name.toLowerCase().includes('doppler')) rememberRealImage(value.name.replace(/\s*\((.*?)\)\s*$/, ''), image);
         Object.values(value).forEach(child => {
@@ -238,7 +235,7 @@
         if (baseNoWear) names.add(baseNoWear);
         const noSouvenirNoWear = noSouvenir.replace(/\s*\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)\s*$/i, '').trim();
         if (noSouvenirNoWear) names.add(noSouvenirNoWear);
-        // Для кастомных сверхдорогих предметов со стикерами лучше показать чистый скин оружия, чем пустую заглушку.
+    
         const cleanOriginal = withWearIfNeeded(stripDecorationsForMarket(original), skin);
         if (cleanOriginal) names.add(cleanOriginal);
         return Array.from(names).filter(Boolean);
@@ -252,8 +249,6 @@
             const url = realImages.get(key);
             if (url) return url;
         }
-        // Мягкий fuzzy-поиск: помогает для вариантов типа Doppler Sapphire/Ruby/Emerald,
-        // где в API название картинки может быть короче, чем название предмета в нашем списке.
         const main = keys[0] || '';
         if (main && realImages.size) {
             const compact = main.replace(/\b(sapphire|ruby|black pearl|emerald|phase 1|phase 2|phase 3|phase 4)\b/g, '').replace(/\s+/g, ' ').trim();
@@ -263,8 +258,6 @@
             }
             if (best) return best;
         }
-        // Последний и самый надежный вариант: прямой redirect на Steam CDN по market_hash_name.
-        // Не требует скачивать JSON/API и работает прямо в <img src>.
         return steamApisImageUrl(skin);
     }
 
@@ -394,8 +387,6 @@
 
 
     function isWeaponSkin(item) {
-        // Название функции оставлено для совместимости, но теперь магазин показывает не только оружие:
-        // скины, ножи, перчатки, наклейки, капсулы, кейсы, наборы музыки, граффити, нашивки и пины.
         const text = norm(`${item?.type || ''} ${item?.name || ''} ${item?.category || ''} ${item?.rarity || ''}`);
         if (!String(item?.name || '').trim()) return false;
         const blocked = ['key'];
@@ -403,8 +394,6 @@
     }
 
     function prepareSkins() {
-        // Важно для GitHub Pages: top-level `const LARGE_SKINS_DATABASE` из skins.js
-        // НЕ становится window.LARGE_SKINS_DATABASE. Поэтому читаем оба варианта.
         let raw = [];
         if (Array.isArray(window.LARGE_SKINS_DATABASE)) {
             raw = window.LARGE_SKINS_DATABASE;
@@ -417,7 +406,6 @@
             } catch (e) {}
         }
 
-        // Жёсткий аварийный fallback, чтобы поле никогда не было пустым.
         if (!raw.length) {
             raw = [
                 { id: 'fallback_ak_47_redline_ft', name: 'AK-47 | Redline (Field-Tested)', price: 18.50, type: 'AK-47', wear: 'FT', rarity: 'classified' },
@@ -441,7 +429,6 @@
             image: item.image || item.image_url || item.icon_url || ''
         })).filter(item => item.name && Number.isFinite(item.price) && isWeaponSkin(item));
 
-        // На GitHub Pages показываем весь рынок: оружие, стикеры, кейсы, капсулы и музыку.
         if (!skins.length) {
             skins = [
                 { id: 'fallback_ak_47_redline_ft', name: 'AK-47 | Redline (Field-Tested)', price: 18.50, type: 'AK-47', wear: 'FT', rarity: 'classified' },
@@ -453,7 +440,6 @@
             ];
         }
 
-        // Убираем возможные пустые фильтры/старые значения, которые скрывали все скины.
         ['left-search-input','left-min-price','left-max-price','search-input','min-price','max-price'].forEach(id => {
             const el = $(id);
             if (el) el.value = '';
