@@ -408,12 +408,25 @@
         return `${pattern}<path d="M55 103 C96 78 153 75 220 93 L253 88 L267 105 L228 117 C162 126 104 124 55 111 Z" fill="url(#stripes)"/><path d="M91 110 L121 134 L149 127 L119 105 Z" fill="#e8f2ff" opacity=".76"/>`;
     }
 
+    function localSkinSvgUrl(skin) {
+        const title = svgSafe(String(skin?.name || 'CS2 ITEM').replace(/\s*\(.+?\)\s*$/,'').slice(0, 34));
+        const type = svgSafe(String(skin?.type || skin?.category || 'Item').slice(0, 18));
+        const rarity = skinColor(skin);
+        const body = weaponSilhouette(skin?.type || skin?.category || '', skin);
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 170" width="300" height="170">
+            <rect width="300" height="170" rx="22" fill="#111827"/>
+            <rect x="10" y="10" width="280" height="150" rx="18" fill="#0b1020" stroke="${rarity}" stroke-width="3" opacity=".98"/>
+            <circle cx="246" cy="34" r="46" fill="${rarity}" opacity=".16"/>
+            ${body}
+            <text x="150" y="153" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#f8fafc">${title}</text>
+            <text x="24" y="30" font-family="Arial, sans-serif" font-size="11" fill="#cbd5e1">${type}</text>
+        </svg>`;
+        return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+    }
+
     function renderThumb(skin) {
-        const realUrl = getRealImageUrl(skin);
-        if (realUrl) {
-            return `<div class="skin-real-wrap"><img class="skin-real-img" src="${esc(realUrl)}" alt="${esc(skin.name)}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='none';"><div class="skin-loading-img" style="display:none"></div></div>`;
-        }
-        return `<div class="skin-loading-img" aria-hidden="true"></div>`;
+        const realUrl = getRealImageUrl(skin) || localSkinSvgUrl(skin);
+        return `<div class="skin-real-wrap"><img class="skin-real-img" src="${esc(realUrl)}" alt="${esc(skin.name)}" loading="lazy" decoding="async" onerror="this.src='${esc(localSkinSvgUrl(skin))}'"><div class="skin-loading-img" style="display:none"></div></div>`;
     }
 
     function rarityLabel(skin) {
