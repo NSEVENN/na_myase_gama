@@ -170,6 +170,39 @@
         }
     }
 
+
+    function steamMarketNameForImage(skin) {
+        let name = String(skin?.market_hash_name || skin?.name || '').trim();
+        if (!name) return '';
+        // Убираем описательные приписки, которых нет в Steam Market name.
+        name = name
+            .replace(/\s*\+\s*\d+x.*$/i, '')
+            .replace(/\s*#\d+.*?(?=\s*\(|$)/i, '')
+            .replace(/\s+Blue Gem(?=\s*\(|$)/i, '')
+            .replace(/\s+Pattern\s*\d+(?=\s*\(|$)/i, '')
+            .replace(/\s+Katowice\s*2014(?=\s*\(|$)/i, '')
+            .replace(/\s+Reason\s+Holo\s*2014(?=\s*\(|$)/i, '')
+            .replace(/\s+Titan\s+Holo\s*2014(?=\s*\(|$)/i, '')
+            .replace(/\s+IBUYPOWER\s+Holo\s*2014(?=\s*\(|$)/i, '')
+            .replace(/\s+Factory New(?=\s*\(|$)/i, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        // Для скинов оружия/ножей внешний вид обязателен, если он есть в объекте, но потерялся в названии.
+        const wearMap = { FN: 'Factory New', MW: 'Minimal Wear', FT: 'Field-Tested', WW: 'Well-Worn', BS: 'Battle-Scarred' };
+        const wear = wearMap[String(skin?.wear || '').toUpperCase()] || '';
+        if (wear && /\|/.test(name) && !/\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)$/i.test(name)) {
+            name += ` (${wear})`;
+        }
+        return name;
+    }
+
+    function steamApisImageUrl(skin) {
+        const name = steamMarketNameForImage(skin);
+        if (!name) return '';
+        return `https://api.steamapis.com/image/item/730/${encodeURIComponent(name)}`;
+    }
+
     function getRealImageUrl(skin) {
         if (!skin) return '';
         if (skin.image) return String(skin.image);
@@ -189,7 +222,9 @@
             }
             if (best) return best;
         }
-        return '';
+        // Последний и самый надежный вариант: прямой redirect на Steam CDN по market_hash_name.
+        // Не требует скачивать JSON/API и работает прямо в <img src>.
+        return steamApisImageUrl(skin);
     }
 
     function getUsers() {
@@ -487,11 +522,13 @@
 
     function renderThumb(skin) {
         const realUrl = getRealImageUrl(skin);
-        if (!realUrl) {
-            // Пока CDN-карта грузится, не показываем придуманные заглушки — только аккуратный loader.
-            return `<div class="skin-real-wrap skin-img-pending" title="${esc(skin.name)}"><div class="skin-cs2-loader">CS2</div></div>`;
+        const backupUrl = steamApisImageUrl(skin);
+        if (!realUrl && !backupUrl) {
+            return `<div class="skin-real-wrap skin-img-pending" title="${esc(skin.name)}"><div class="skin-cs2-loader">IMG</div></div>`;
         }
-        return `<div class="skin-real-wrap"><img class="skin-real-img" src="${esc(realUrl)}" alt="${esc(skin.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.closest('.skin-real-wrap').classList.add('skin-img-error');this.remove();"><div class="skin-cs2-loader">CS2</div></div>`;
+        const src = realUrl || backupUrl;
+        const backupAttr = backupUrl && backupUrl !== src ? ` data-backup-src="${esc(backupUrl)}"` : '';
+        return `<div class="skin-real-wrap"><img class="skin-real-img" src="${esc(src)}"${backupAttr} alt="${esc(skin.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="if(this.dataset.backupSrc && this.src!==this.dataset.backupSrc){this.src=this.dataset.backupSrc;this.removeAttribute('data-backup-src');}else{this.closest('.skin-real-wrap').classList.add('skin-img-error');this.remove();}"><div class="skin-cs2-loader">IMG</div></div>`;
     }
 
     function rarityLabel(skin) {
