@@ -263,6 +263,196 @@
         return weaponWords.some(w => text.includes(w));
     }
 
+
+
+    // === BEST CS2 DATABASE LOADER ===
+    // Источник ассетов/названий: ByMykel CSGO-API skins_not_grouped.json.
+    // Если рядом есть data/skins.json, проект сначала берет его: туда можно положить уже собранную базу 2000+ с актуальными ценами.
+    const BEST_SKINS_CACHE_KEY = 'na_myase_best_skins_db_v1';
+    const BEST_SKINS_CACHE_TTL = 12 * 60 * 60 * 1000;
+    const BEST_SKIN_DATA_ENDPOINTS = [
+        './data/skins.json',
+        'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/skins_not_grouped.json',
+        'https://cdn.jsdelivr.net/gh/ByMykel/CSGO-API@main/public/api/en/skins_not_grouped.json'
+    ];
+    const WEAR_VARIANTS = [
+        { name: 'Factory New', short: 'FN', min: 0, max: 0.07, mult: 1.75 },
+        { name: 'Minimal Wear', short: 'MW', min: 0.07, max: 0.15, mult: 1.22 },
+        { name: 'Field-Tested', short: 'FT', min: 0.15, max: 0.38, mult: 1.00 },
+        { name: 'Well-Worn', short: 'WW', min: 0.38, max: 0.45, mult: 0.82 },
+        { name: 'Battle-Scarred', short: 'BS', min: 0.45, max: 1, mult: 0.68 }
+    ];
+    const RARITY_BASE_PRICE = {
+        consumer: 0.35,
+        industrial: 0.85,
+        milspec: 2.4,
+        restricted: 8.5,
+        classified: 26,
+        covert: 78,
+        contraband: 650,
+        knife: 190,
+        gloves: 155
+    };
+
+    function slugifySkinId(value) {
+        return String(value || '')
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/★/g, 'star')
+            .replace(/[^a-z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '')
+            .slice(0, 96) || `skin_${Math.random().toString(36).slice(2)}`;
+    }
+
+    function normalizeRarity(value, name = '') {
+        const text = norm(`${value || ''} ${name || ''}`).replace(/[-_\s]/g, '');
+        if (text.includes('contraband')) return 'contraband';
+        if (text.includes('covert') || text.includes('extraordinary')) return norm(name).includes('glove') ? 'gloves' : (norm(name).includes('knife') || name.includes('★') ? 'knife' : 'covert');
+        if (text.includes('classified')) return 'classified';
+        if (text.includes('restricted')) return 'restricted';
+        if (text.includes('milspec') || text.includes('mil-spec')) return 'milspec';
+        if (text.includes('industrial')) return 'industrial';
+        if (text.includes('consumer')) return 'consumer';
+        if (norm(name).includes('glove')) return 'gloves';
+        if (name.includes('★') || norm(name).includes('knife') || norm(name).includes('bayonet') || norm(name).includes('karambit')) return 'knife';
+        return 'milspec';
+    }
+
+    function inferSkinType(item, name = '') {
+        return String(item?.weapon?.name || item?.category?.name || item?.type || item?.weapon || String(name).split('|')[0] || 'Skin').trim();
+    }
+
+    function getApiImage(item) {
+        return item?.image || item?.image_url || item?.image_url_steam || item?.icon_url || item?.texture || '';
+    }
+
+    function isWearAllowed(item, wear) {
+        const min = Number(item?.min_float ?? item?.wear_min ?? item?.paintkits?.[0]?.wear_min ?? 0);
+        const max = Number(item?.max_float ?? item?.wear_max ?? item?.paintkits?.[0]?.wear_max ?? 1);
+        if (!Number.isFinite(min) || !Number.isFinite(max)) return true;
+        return wear.max >= min && wear.min <= max;
+    }
+
+    function estimatedMarketPrice(name, rarity, type, wearShort) {
+        const h = hashText(`${name}|${rarity}|${type}|${wearShort}`);
+        let base = RARITY_BASE_PRICE[rarity] || 2.2;
+        if (rarity === 'knife' || String(name).includes('★')) base *= 1.2 + (h % 240) / 100;
+        if (rarity === 'gloves') base *= 1.1 + (h % 220) / 100;
+        if (/dragon lore|gungnir|wild lotus|howl|medusa|dlore/i.test(name)) base *= 18;
+        if (/doppler|fade|marble fade|gamma doppler|slaughter/i.test(name)) base *= 2.2;
+        const wear = WEAR_VARIANTS.find(w => w.short === wearShort) || WEAR_VARIANTS[2];
+        const spread = 0.72 + ((h >>> 8) % 90) / 100;
+        return Math.max(0.03, Number((base * wear.mult * spread).toFixed(2)));
+    }
+
+    function expandApiSkin(item, index) {
+        const baseName = String(item?.name || item?.market_hash_name || '').trim();
+        if (!baseName || !isWeaponSkin({ name: baseName, type: inferSkinType(item, baseName), rarity: item?.rarity?.name || item?.rarity })) return [];
+        const image = getApiImage(item);
+        const type = inferSkinType(item, baseName);
+        const rarity = normalizeRarity(item?.rarity?.name || item?.rarity || item?.rarity_color, baseName);
+        const alreadyHasWear = /\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)$/i.test(baseName);
+        const variants = alreadyHasWear ? [WEAR_VARIANTS.find(w => baseName.includes(w.name)) || WEAR_VARIANTS[2]] : WEAR_VARIANTS.filter(w => isWearAllowed(item, w));
+        return variants.map(wear => {
+            const marketName = alreadyHasWear ? baseName : `${baseName} (${wear.name})`;
+            const p = Number(item?.price || item?.steam_price || item?.avg_price || 0);
+            return {
+                id: slugifySkinId(marketName),
+                name: marketName,
+                market_hash_name: marketName,
+                price: p > 0 ? Number(p.toFixed(2)) : estimatedMarketPrice(marketName, rarity, type, wear.short),
+                priceSource: p > 0 ? 'api' : 'estimate',
+                type,
+                wear: wear.short,
+                rarity,
+                category: item?.category?.name || item?.category || '',
+                image,
+                sourceIndex: index
+            };
+        });
+    }
+
+    function normalizeExternalSkinRows(payload) {
+        const source = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
+        const seen = new Set();
+        const rows = [];
+        source.forEach((item, index) => {
+            const converted = item?.market_hash_name && item?.price && item?.image
+                ? [{
+                    id: slugifySkinId(item.market_hash_name),
+                    name: String(item.market_hash_name),
+                    market_hash_name: String(item.market_hash_name),
+                    price: Number(item.price) > 1000 ? Number(item.price) / 100 : Number(item.price),
+                    priceSource: item.priceSource || 'external',
+                    type: inferSkinType(item, item.market_hash_name),
+                    wear: (String(item.market_hash_name).match(/\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)$/i)?.[1] || 'ITEM').replace('Factory New','FN').replace('Minimal Wear','MW').replace('Field-Tested','FT').replace('Well-Worn','WW').replace('Battle-Scarred','BS'),
+                    rarity: normalizeRarity(item.rarity, item.market_hash_name),
+                    category: item.category || '',
+                    image: item.image || item.image_url || item.image_url_steam || ''
+                }]
+                : expandApiSkin(item, index);
+            converted.forEach(row => {
+                if (!row?.name || !isWeaponSkin(row)) return;
+                const key = normalizeImageName(row.name);
+                if (seen.has(key)) return;
+                seen.add(key);
+                rows.push(row);
+                if (row.image) rememberRealImage(row.name, row.image);
+            });
+        });
+        return rows.sort((a, b) => a.price - b.price);
+    }
+
+    function applyBestSkinRows(rows) {
+        if (!Array.isArray(rows) || rows.length < 2000) return false;
+        skins = rows.map((item, index) => ({
+            id: String(item.id || slugifySkinId(item.name || `skin_${index}`)),
+            name: String(item.name || item.market_hash_name || 'Unknown skin'),
+            market_hash_name: String(item.market_hash_name || item.name || ''),
+            price: Math.max(0.01, Number(item.price || 1)),
+            priceSource: item.priceSource || 'api',
+            type: String(item.type || String(item.name || 'Skin').split('|')[0]).trim(),
+            wear: item.wear || item.category || 'ITEM',
+            rarity: normalizeRarity(item.rarity, item.name),
+            category: item.category || '',
+            image: item.image || item.image_url || item.image_url_steam || ''
+        })).filter(item => item.name && Number.isFinite(item.price) && isWeaponSkin(item));
+        window.LARGE_SKINS_DATABASE = skins;
+        return skins.length >= 2000;
+    }
+
+    function tryLoadBestSkinsCache() {
+        try {
+            const cached = JSON.parse(localStorage.getItem(BEST_SKINS_CACHE_KEY) || 'null');
+            if (!cached || Date.now() - cached.time > BEST_SKINS_CACHE_TTL || !Array.isArray(cached.rows)) return false;
+            if (applyBestSkinRows(cached.rows)) {
+                renderAll();
+                return true;
+            }
+        } catch (_) {}
+        return false;
+    }
+
+    async function loadBestSkinsDatabase() {
+        tryLoadBestSkinsCache();
+        for (const url of BEST_SKIN_DATA_ENDPOINTS) {
+            try {
+                const res = await fetch(url, { cache: 'no-cache' });
+                if (!res.ok) continue;
+                const payload = await res.json();
+                const rows = normalizeExternalSkinRows(payload);
+                if (applyBestSkinRows(rows)) {
+                    try { localStorage.setItem(BEST_SKINS_CACHE_KEY, JSON.stringify({ time: Date.now(), rows: skins.slice(0, 6500) })); } catch (_) {}
+                    renderAll();
+                    loadRealImages();
+                    return true;
+                }
+            } catch (_) {}
+        }
+        return false;
+    }
+
     function prepareSkins() {
         // Важно для GitHub Pages: top-level `const LARGE_SKINS_DATABASE` из skins.js
         // НЕ становится window.LARGE_SKINS_DATABASE. Поэтому читаем оба варианта.
@@ -292,13 +482,16 @@
         }
 
         skins = raw.map((item, index) => ({
-            id: String(item.id || `skin_${index}`),
-            name: String(item.name || 'Unknown skin'),
+            id: String(item.id || slugifySkinId(item.name || `skin_${index}`)),
+            name: String(item.name || item.market_hash_name || 'Unknown skin'),
+            market_hash_name: String(item.market_hash_name || item.name || ''),
             price: Math.max(0.01, Number(item.price || 1)),
+            priceSource: item.priceSource || item.source || 'local',
             type: String(item.type || String(item.name || 'Skin').split('|')[0]).trim(),
             wear: item.wear || item.category || 'ITEM',
-            rarity: item.rarity || 'consumer',
-            category: item.category || ''
+            rarity: normalizeRarity(item.rarity || 'consumer', item.name),
+            category: item.category || '',
+            image: item.image || item.image_url || item.image_url_steam || ''
         })).filter(item => item.name && Number.isFinite(item.price) && isWeaponSkin(item));
 
         // Чтобы на GitHub Pages всегда были именно оружейные CS2-скины, а не стикеры/кейсы.
@@ -526,37 +719,14 @@
         calcChance();
     }
 
-    function setWheelResult(text, type) {
-        const wheel = $('wheel-container');
-        if (!wheel) return;
-        let badge = $('wheel-result-message');
-        if (!badge) {
-            badge = document.createElement('div');
-            badge.id = 'wheel-result-message';
-            badge.className = 'wheel-result-message';
-            wheel.appendChild(badge);
-        }
-        badge.textContent = text || '';
-        badge.className = `wheel-result-message ${type || ''}`.trim();
-        badge.classList.toggle('active', Boolean(text));
-    }
-
-    function animatePointerSpin(finalWin, duration = 6000, chanceValue = calcChance()) {
+    function animatePointerSpin(finalWin, duration = 6000) {
         const pointer = $('wheel-pointer');
         const track = $('wheel-track');
         if (!pointer) return Promise.resolve();
 
-        setWheelResult('', '');
-
-        const chanceDeg = Math.min(342, Math.max(2, Number(chanceValue || 0) * 3.6));
-        const winMin = 8;
-        const winMax = Math.max(winMin + 1, chanceDeg - 8);
-        const loseMin = Math.min(352, chanceDeg + 10);
-        const loseMax = 354;
-        const stopAngle = finalWin
-            ? winMin + Math.random() * (winMax - winMin)
-            : loseMin + Math.random() * Math.max(1, loseMax - loseMin);
-        const finalAngle = 2160 + stopAngle;
+        const finalAngle = finalWin
+            ? 2160 + 18 + Math.random() * 64
+            : 2160 + 126 + Math.random() * 170;
         const start = performance.now();
 
         pointer.classList.add('spin-now');
@@ -605,8 +775,7 @@
         if (btn) btn.disabled = true;
         if (status) status.textContent = 'Апгрейд запущен... стрелка крутится';
 
-        await animatePointerSpin(win, 6000, chance);
-        setWheelResult(win ? 'ВЫИГРЫШ' : 'ПОРАЖЕНИЕ', win ? 'win' : 'lose');
+        await animatePointerSpin(win, 6000);
 
         const removeIndex = selectedSource.invIndex;
         const sourceName = selectedSource.name;
@@ -745,18 +914,20 @@
         }
         if (!started) started = true;
         renderAll();
+        loadBestSkinsDatabase();
         loadRealImages();
         setTab('inventory');
     }
 
     function init() {
         prepareSkins();
+        loadBestSkinsDatabase();
         bindEvents();
         const session = getSession();
         const users = getUsers();
         if (session && users[session]) loadAccount(session);
         else showAuth('login');
-        window.NM_DEBUG = { startApp, renderAll, loadRealImages, get skins() { return skins; }, get state() { return { currentLogin, balance, inventory, selectedSource, selectedTarget }; } };
+        window.NM_DEBUG = { startApp, renderAll, loadRealImages, loadBestSkinsDatabase, get skins() { return skins; }, get state() { return { currentLogin, balance, inventory, selectedSource, selectedTarget }; } };
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
