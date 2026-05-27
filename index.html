@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NA_MYASE UPGRADER</title>
+    <link rel="stylesheet" href="style.css">
+
+</head>
+<body class="auth-locked">
+    <div class="auth-overlay active" id="auth-overlay">
+        <div class="auth-window">
+            <div class="auth-logo">NA_MYASE<span> UPGRADER</span></div>
+            <div class="auth-tabs">
+                <button type="button" id="auth-login-tab" class="auth-tab active" data-auth-tab="login">Login</button>
+                <button type="button" id="auth-register-tab" class="auth-tab" data-auth-tab="register">Registration</button>
+            </div>
+            <form class="auth-form active" id="login-form">
+                <input type="text" id="login-username" placeholder="Логин" autocomplete="username">
+                <input type="password" id="login-password" placeholder="Пароль" autocomplete="current-password">
+                <button type="submit" id="auth-login-btn" class="auth-action-btn">Войти</button>
+            </form>
+            <form class="auth-form" id="register-form">
+                <input type="text" id="register-username" placeholder="Логин" autocomplete="username">
+                <input type="password" id="register-password" placeholder="Пароль" autocomplete="new-password">
+                <input type="password" id="register-password-repeat" placeholder="Подтверждение пароля" autocomplete="new-password">
+                <button type="submit" id="auth-register-btn" class="auth-action-btn">Зарегистрироваться</button>
+            </form>
+            <div id="auth-status" class="auth-status"></div>
+        </div>
+    </div>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="logo">NA_MYASE<span> UPGRADER</span></div>
+            <div class="header-right">
+                <div class="balance-box">
+                    <span>Баланс:</span>
+                    <strong id="balance">0</strong>$
+                </div>
+                <button id="open-deposit-btn" class="deposit-btn">+</button>
+                <div class="user-chip" id="user-chip" title="Текущий аккаунт"></div>
+                <button type="button" id="logout-btn" class="logout-btn" title="Выйти">Выйти</button>
+            </div>
+        </header>
+        <aside class="live-feed-panel" id="live-feed-panel" aria-label="Live лента апгрейдов">
+            <div class="live-feed-header">
+                <span class="live-dot"></span> LIVE
+            </div>
+            <div class="live-feed-list" id="live-feed-list"></div>
+        </aside>
+        <section class="upgrade-dashboard">
+            <div class="upgrade-slot item-source" id="source-preview">
+                <div class="slot-title">Выберите скины для использования</div>
+                <div class="slot-placeholder">
+                    <div class="chevron-arrow"></div>
+                </div>
+            </div>
+            <div class="upgrade-center-wrapper">
+                <div class="side-control-panel">
+                    <div class="control-title">Множители</div>
+                    <button class="mult-btn btn-green" data-type="mult" data-val="2">X2</button>
+                    <button class="mult-btn btn-orange" data-type="mult" data-val="4">X4</button>
+                    <button class="mult-btn btn-red" data-type="mult" data-val="8">X8</button>
+                </div>
+                <div class="upgrade-radial-core">
+                    <div class="radial-wheel-container" id="wheel-container">
+                        <div class="wheel-track" id="wheel-track"></div>
+                        <div class="wheel-inner">
+                            <div class="wheel-chevrons">⌃<br>⌄</div>
+                        </div>
+                        <div id="wheel-pointer" class="wheel-pointer"></div>
+                    </div>
+                    <div class="radial-center-info">
+                        <div id="chance-percent">0.00%</div>
+                        <div class="chance-label">средний шанс</div>
+                    </div>
+                </div>
+                <div class="side-control-panel">
+                    <div class="control-title">Шанс (%)</div>
+                    <button class="mult-btn btn-red" data-type="pct" data-val="33">33%</button>
+                    <button class="mult-btn btn-orange" data-type="pct" data-val="55">55%</button>
+                    <button class="mult-btn btn-green" data-type="pct" data-val="75">75%</button>
+                </div>
+            </div>
+            <div class="upgrade-slot item-target" id="target-preview">
+                <div class="slot-title">Выберите скин для апгрейда</div>
+                <div class="slot-placeholder">
+                    <div class="chevron-arrow upward"></div>
+                </div>
+            </div>
+        </section>
+        <div class="action-bar-center">
+            <div class="status-output" id="status-text">Выберите скин или скины и баланс для использования</div>
+            <button id="upgrade-btn" class="action-upgrade-btn" disabled>Прокачать</button>
+        </div>
+        <section class="inventory-store-section">
+            <div class="grid-panel">
+                <div class="panel-navbar">
+                    <div class="nav-tabs">
+                        <button class="nav-tab-btn active" data-tab="inventory">Мои (<span id="inv-count">0</span>)</button>
+                        <button class="nav-tab-btn" data-tab="shop">Магазин</button>
+                    </div>
+                    <div class="filters-wrapper">
+                        <div class="search-box">
+                            <input type="text" id="left-search-input" placeholder="Поиск...">
+                        </div>
+                        <select id="left-sort-select" class="custom-select">
+                            <option value="low-to-high">Цена ↑</option>
+                            <option value="high-to-low">Цена ↓</option>
+                        </select>
+                        <div class="price-range-inputs">
+                            <input type="number" id="left-min-price" placeholder="от">
+                            <input type="number" id="left-max-price" placeholder="до">
+                        </div>
+                    </div>
+                </div>
+                <div id="inventory-tab" class="grid-scroll-container active">
+                    <p class="empty-notice" id="inv-empty">Ваш инвентарь пуст. Пополните баланс или купите скин.</p>
+                    <div class="skins-display-grid" id="inventory-grid"></div>
+                </div>
+                <div id="shop-tab" class="grid-scroll-container">
+                    <div class="skins-display-grid" id="shop-grid"></div>
+                </div>
+            </div>
+            <div class="grid-panel">
+                <div class="panel-navbar">
+                    <div class="panel-title">Выберите скин</div>
+                    <div class="filters-wrapper">
+                        <div class="search-box">
+                            <input type="text" id="search-input" placeholder="Поиск...">
+                        </div>
+                        <select id="sort-select" class="custom-select">
+                            <option value="low-to-high">Цена ↑</option>
+                            <option value="high-to-low">Цена ↓</option>
+                        </select>
+                        <div class="price-range-inputs">
+                            <input type="number" id="min-price" placeholder="от">
+                            <input type="number" id="max-price" placeholder="до">
+                        </div>
+                    </div>
+                </div>
+                <div class="grid-scroll-container active">
+                    <div class="skins-display-grid" id="target-shop-grid"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+    <div class="modal-overlay" id="deposit-modal">
+        <div class="modal-window">
+            <div class="modal-header">
+                <h3>Пополнение счета</h3>
+                <button class="modal-close-btn" id="close-deposit-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="promo-input" autocomplete="off">
+                <button id="activate-promo-btn" class="modal-action-btn">Пополнить</button>
+                <div id="modal-status"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="profile-modal">
+        <div class="modal-window profile-window">
+            <div class="modal-header">
+                <h3>Профиль</h3>
+                <button class="modal-close-btn" id="close-profile-btn">&times;</button>
+            </div>
+            <div class="profile-user-line">
+                <span>Ник:</span>
+                <strong id="profile-login">-</strong>
+            </div>
+            <div class="profile-user-line">
+                <span>Баланс:</span>
+                <strong><span id="profile-balance">0.00</span>$</strong>
+            </div>
+            <div class="profile-actions-row">
+                <button type="button" id="profile-select-all" class="profile-secondary-btn">Выбрать все</button>
+                <button type="button" id="profile-sell-selected" class="profile-sell-btn">Продать выбранные</button>
+            </div>
+            <div id="profile-sell-summary" class="profile-sell-summary">Выбрано: 0 на 0.00$</div>
+            <div id="profile-inventory-list" class="profile-inventory-list"></div>
+        </div>
+    </div>
+
+    <script src="data/skins.js?v=modular-2026-05-27"></script>
+    <script src="js/config.js?v=modular-2026-05-27"></script>
+    <script src="js/utils.js?v=modular-2026-05-27"></script>
+    <script src="js/image-service.js?v=modular-2026-05-27"></script>
+    <script src="js/app.js?v=modular-2026-05-27"></script>
+</body>
+</html>
