@@ -42,13 +42,17 @@
                 <button type="button" id="logout-btn" class="logout-btn" title="Выйти">Выйти</button>
             </div>
         </header>
+        <div class="mode-switcher" aria-label="Выбор режима">
+            <button type="button" class="mode-switch-btn active" data-mode="upgrader">Upgrader</button>
+            <button type="button" class="mode-switch-btn" data-mode="fortune">Wheel of Fortune</button>
+        </div>
         <aside class="live-feed-panel" id="live-feed-panel" aria-label="Live лента апгрейдов">
             <div class="live-feed-header">
                 <span class="live-dot"></span> LIVE
             </div>
             <div class="live-feed-list" id="live-feed-list"></div>
         </aside>
-        <section class="upgrade-dashboard">
+        <section class="upgrade-dashboard mode-panel mode-upgrader-panel">
             <div class="upgrade-slot item-source" id="source-preview">
                 <div class="slot-title">Выберите скины для использования</div>
                 <div class="slot-placeholder">
@@ -89,11 +93,45 @@
                 </div>
             </div>
         </section>
-        <div class="action-bar-center">
+        <div class="action-bar-center mode-panel mode-upgrader-panel">
             <div class="status-output" id="status-text">Выберите скин или скины и баланс для использования</div>
             <button id="upgrade-btn" class="action-upgrade-btn" disabled>Прокачать</button>
         </div>
-        <section class="inventory-store-section">
+        <section class="fortune-dashboard mode-panel mode-fortune-panel" aria-label="Wheel of Fortune">
+            <div class="fortune-left-panel">
+                <div class="fortune-title">ПРЕДЫДУЩИЕ РАУНДЫ</div>
+                <div class="fortune-history" id="fortune-history"></div>
+                <div class="fortune-bet-card">
+                    <div class="fortune-balance-line"><strong id="fortune-balance">0.00</strong> <span>USD</span></div>
+                    <input type="number" id="fortune-bet-input" min="0" step="0.01" value="0" placeholder="0">
+                    <div class="fortune-quick-row">
+                        <button type="button" class="fortune-quick" data-action="clear">C</button>
+                        <button type="button" class="fortune-quick" data-action="half">½</button>
+                        <button type="button" class="fortune-quick" data-action="double">2×</button>
+                        <button type="button" class="fortune-quick" data-action="plus" data-value="10">+10</button>
+                        <button type="button" class="fortune-quick" data-action="plus" data-value="100">+100</button>
+                        <button type="button" class="fortune-quick" data-action="plus" data-value="1000">+1K</button>
+                    </div>
+                </div>
+                <button type="button" class="fortune-dropdown">Автоставки⌄</button>
+                <button type="button" class="fortune-dropdown">Повторить предыдущие ставки⌄</button>
+            </div>
+            <div class="fortune-center-panel">
+                <div class="fortune-wheel" id="fortune-wheel">
+                    <div class="fortune-wheel-ring"></div>
+                    <div class="fortune-wheel-timer" id="fortune-timer">10.00</div>
+                    <div class="fortune-pointer"></div>
+                </div>
+                <div class="fortune-status" id="fortune-status">Выберите множитель и сделайте ставку</div>
+                <div class="fortune-mult-row">
+                    <button type="button" class="fortune-mult grey" data-mult="2">2×</button>
+                    <button type="button" class="fortune-mult red active" data-mult="3">3×</button>
+                    <button type="button" class="fortune-mult blue" data-mult="5">5×</button>
+                    <button type="button" class="fortune-mult gold" data-mult="50">50×</button>
+                </div>
+            </div>
+        </section>
+        <section class="inventory-store-section mode-panel mode-upgrader-panel">
             <div class="grid-panel">
                 <div class="panel-navbar">
                     <div class="nav-tabs">

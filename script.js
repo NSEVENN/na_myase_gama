@@ -875,6 +875,113 @@
         calcChance();
     }
 
+
+
+    let currentMode = 'upgrader';
+    let fortuneMultiplier = 3;
+    let fortuneSpinning = false;
+    let fortuneRotation = 0;
+    let fortuneHistory = [];
+
+    function setMode(mode) {
+        currentMode = mode === 'fortune' ? 'fortune' : 'upgrader';
+        document.body.classList.toggle('mode-fortune', currentMode === 'fortune');
+        $$('.mode-switch-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === currentMode));
+        if (currentMode === 'fortune') renderFortune();
+    }
+
+    function getFortuneBet() {
+        const input = $('fortune-bet-input');
+        return Math.max(0, Number(input?.value || 0));
+    }
+
+    function setFortuneBet(value) {
+        const input = $('fortune-bet-input');
+        if (input) input.value = Math.max(0, Number(value || 0)).toFixed(2).replace(/\.00$/, '');
+    }
+
+    function renderFortune() {
+        const bal = $('fortune-balance');
+        if (bal) bal.textContent = money(balance);
+        const history = $('fortune-history');
+        if (history) {
+            const rows = fortuneHistory.length ? fortuneHistory : ['red','blue','red','grey','gold','blue','grey','red','blue','red','grey','blue','red','gold','grey','blue','red','grey','blue','red','grey','blue','red','blue'];
+            history.innerHTML = rows.slice(-36).map(c => `<span class="fortune-history-dot ${c === 'grey' ? '' : c}"></span>`).join('');
+        }
+        $$('.fortune-mult').forEach(btn => btn.classList.toggle('active', Number(btn.dataset.mult) === fortuneMultiplier));
+    }
+
+    function fortuneColorByMultiplier(mult) {
+        if (mult === 50) return 'gold';
+        if (mult === 5) return 'blue';
+        if (mult === 3) return 'red';
+        return 'grey';
+    }
+
+    function fortuneQuick(action, value) {
+        let bet = getFortuneBet();
+        if (action === 'clear') bet = 0;
+        if (action === 'half') bet = bet / 2;
+        if (action === 'double') bet = bet * 2;
+        if (action === 'plus') bet += Number(value || 0);
+        setFortuneBet(Math.min(balance, bet));
+    }
+
+    async function spinFortune() {
+        if (fortuneSpinning) return;
+        const bet = getFortuneBet();
+        const status = $('fortune-status');
+        const wheel = $('fortune-wheel');
+        const ring = wheel?.querySelector('.fortune-wheel-ring');
+        const timer = $('fortune-timer');
+        if (!bet || bet <= 0) {
+            if (status) status.textContent = 'Введите сумму ставки';
+            return;
+        }
+        if (bet > balance) {
+            if (status) status.textContent = 'Недостаточно баланса';
+            return;
+        }
+        fortuneSpinning = true;
+        balance -= bet;
+        updateBalance();
+        renderFortune();
+        if (status) { status.textContent = 'Колесо крутится...'; status.className = 'fortune-status'; }
+
+        const winChance = Math.min(48, 100 / fortuneMultiplier);
+        const win = Math.random() * 100 <= winChance;
+        const resultColor = win ? fortuneColorByMultiplier(fortuneMultiplier) : ['red','blue','grey'][Math.floor(Math.random() * 3)];
+        const targetAngles = { red: 24, blue: 60, grey: 42, gold: 169 };
+        fortuneRotation += 1800 + (360 - targetAngles[resultColor]) + Math.random() * 8;
+        if (wheel) wheel.classList.add('spinning');
+        if (ring) ring.style.transform = `rotate(${fortuneRotation}deg)`;
+
+        const start = performance.now();
+        await new Promise(resolve => {
+            function frame(now) {
+                const left = Math.max(0, 5.2 - ((now - start) / 1000));
+                if (timer) timer.textContent = left.toFixed(2);
+                if (left > 0) requestAnimationFrame(frame); else resolve();
+            }
+            requestAnimationFrame(frame);
+        });
+
+        if (win) {
+            const prize = bet * fortuneMultiplier;
+            balance += prize;
+            if (status) { status.textContent = `ВЫИГРЫШ +${money(prize)}$`; status.className = 'fortune-status win'; }
+        } else if (status) {
+            status.textContent = `ПРОИГРЫШ -${money(bet)}$`;
+            status.className = 'fortune-status lose';
+        }
+        fortuneHistory.push(resultColor);
+        saveAccount();
+        updateBalance();
+        renderFortune();
+        if (timer) timer.textContent = '10.00';
+        fortuneSpinning = false;
+    }
+
     function openDeposit() {
         const modal = $('deposit-modal');
         const status = $('modal-status');
@@ -957,6 +1064,11 @@
         $('activate-promo-btn')?.addEventListener('click', activatePromo);
         $('promo-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') activatePromo(); });
         $('upgrade-btn')?.addEventListener('click', upgrade);
+        $$('.mode-switch-btn').forEach(btn => btn.addEventListener('click', () => setMode(btn.dataset.mode)));
+        $$('.fortune-mult').forEach(btn => btn.addEventListener('click', () => { fortuneMultiplier = Number(btn.dataset.mult || 3); renderFortune(); }));
+        $$('.fortune-quick').forEach(btn => btn.addEventListener('click', () => fortuneQuick(btn.dataset.action, btn.dataset.value)));
+        $('fortune-wheel')?.addEventListener('click', spinFortune);
+        $('fortune-bet-input')?.addEventListener('input', renderFortune);
 
         $$('.nav-tab-btn').forEach(btn => btn.addEventListener('click', () => setTab(btn.dataset.tab)));
         ['left-search-input','left-sort-select','left-min-price','left-max-price'].forEach(id => $(id)?.addEventListener('input', renderShop));
@@ -988,6 +1100,7 @@
 
     function renderAll() {
         updateBalance();
+        renderFortune();
         renderInventory();
         renderShop();
         renderTargets();
